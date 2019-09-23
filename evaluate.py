@@ -13,7 +13,7 @@ from config import classes_to_predict
 
 from config import MAX_SEQUENCE_LENGTH, MAX_NB_WORDS, VALIDATION_SPLIT, num_lstm, num_dense, lstm_dropout_rate, dense_dropout_rate
 
-from config import classes_to_predict, DEV_FILE, TRAIN_FILE, EMB_FILE, MODEL_PATH, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE
+from config import classes_to_predict, DEV_FILE, TRAIN_FILE, EMB_FILE, MODEL_PATH, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE, nb_words, EMBEDDING_DIM
 
 def evaluate():
 
@@ -27,7 +27,6 @@ def evaluate():
     embedding_matrix = pickle.load(open(embedding_matrix_file, 'rb'), encoding="iso-8859-1")
     # model = pickle.load(open(model_file, 'rb'), encoding="iso-8859-1")
 
-    nb_words, EMBEDDING_DIM = [100000, 200]
     model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict)
     model.load_weights(checkpoint_file)
     # model = load_model(checkpoint_file)

@@ -9,7 +9,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 from utils import read_data, preprocess_text
 from make_model import make_model
-from config import classes_to_predict, MODEL_PATH, DEV_FILE, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE
+from config import classes_to_predict, MODEL_PATH, DEV_FILE, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE, nb_words, EMBEDDING_DIM
 
 def predict():
 
@@ -26,7 +26,6 @@ def predict():
     label2id = {k: t.argmax() for k, t in predicate_label.items()}
     id2label = {_id: label for label, _id in label2id.items()}
 
-    nb_words, EMBEDDING_DIM = [100000, 200]
     model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict)
     model.load_weights(checkpoint_file)
     # model = load_model(checkpoint_file)
@@ -48,19 +47,18 @@ def predict():
     final_test_data = pad_sequences(test_sequences, maxlen=150)
     # print('test_data', test_data[:3])
     print('模型评估')
-    ret = model.predict(x=final_test_data[:300], batch_size=1)
+    ret = model.predict(x=final_test_data, batch_size=1)
     # print('预测结果：', ret)
     # print('标注', '预测', '问题')
     rets = []
     for label, pred, question in zip(test_y, ret, test_data):
-        # print(id2label[label.argmax()], id2label[pred.argmax()], question)
+        print(id2label[label.argmax()], id2label[pred.argmax()], question)
         rets.append([id2label[label.argmax()], id2label[pred.argmax()], question])
 
     print('正确率：{}'.format(len([t for t in rets if t[0]==t[1]])/len(rets)))
 
 def main():
     predict()
-
 
 if __name__ == '__main__':
     main()

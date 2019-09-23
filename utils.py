@@ -22,7 +22,7 @@ def read_data(input_file):
 print('performing some basic preprocessing on data')
 
 #regex for removing non-alphanumeric characters and spaces
-remove_special_char = re.compile('r[^a-z\d]',re.IGNORECASE)
+remove_special_char = re.compile('[^\u4e00-\u9fa5A-Za-z0-9 ]',re.IGNORECASE)
 
 #regex to replace all numerics
 replace_numerics = re.compile(r'\d+',re.IGNORECASE)
