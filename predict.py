@@ -9,7 +9,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 from utils import read_data, preprocess_text
 from make_model import make_model
-from config import classes_to_predict, MODEL_PATH, DEV_FILE, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE, nb_words, EMBEDDING_DIM
+from config import MODEL_PATH, DEV_FILE, LABELS_FILE, CHECKPOINT_FILE, EMBEDDING_MATRIX_FILE, TOKENIZER_FILE
 
 def predict():
 
@@ -22,11 +22,11 @@ def predict():
     predicate_label = pickle.load(open(classes_to_labels_flie, 'rb'), encoding="iso-8859-1")
     embedding_matrix = pickle.load(open(embedding_matrix_file, 'rb'), encoding="iso-8859-1")
     # model = pickle.load(open(model_file, 'rb'), encoding="iso-8859-1")
-
+    nb_words, EMBEDDING_DIM = embedding_matrix.shape
     label2id = {k: t.argmax() for k, t in predicate_label.items()}
     id2label = {_id: label for label, _id in label2id.items()}
 
-    model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict)
+    model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, len(predicate_label))
     model.load_weights(checkpoint_file)
     # model = load_model(checkpoint_file)
 

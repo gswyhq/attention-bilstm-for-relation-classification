@@ -25,9 +25,9 @@ from keras.callbacks import TensorBoard
 from make_model import make_model
 from utils import read_data, preprocess_text
 from evaluate import evaluate
-from config import classes_to_predict, DEV_FILE, TRAIN_FILE, EMB_FILE, MODEL_PATH, LOG_PATH, TOKENIZER_FILE
+from config import DEV_FILE, TRAIN_FILE, EMB_FILE, MODEL_PATH, LOG_PATH, TOKENIZER_FILE
 
-from config import MAX_SEQUENCE_LENGTH, MAX_NB_WORDS, VALIDATION_SPLIT, num_lstm, num_dense, lstm_dropout_rate, dense_dropout_rate
+from config import MAX_SEQUENCE_LENGTH, MAX_NB_WORDS, CHECKPOINT_FILE
 
 flags = tf.app.flags
 flags.DEFINE_boolean("train",       False,      "是否训练(默认：否)")
@@ -38,14 +38,6 @@ flags.DEFINE_string("train_file",   TRAIN_FILE,  "训练文件路径")
 flags.DEFINE_string("dev_file",     DEV_FILE,    "校验文件路径")
 
 FLAGS = tf.app.flags.FLAGS
-
-predicate_index = {predicate: _index for _index, predicate in enumerate(classes_to_predict)}
-
-predicate_categ = to_categorical(list(predicate_index.values()))
-
-predicate_label = {predicate: predicate_categ[_index] for predicate, _index in predicate_index.items()}
-
-print(predicate_label)
 
 tokenizer_name = os.path.join(FLAGS.model_path, TOKENIZER_FILE)
 
@@ -75,8 +67,6 @@ def train():
     ## forming sequeces to feed into the network.
     ##################################################
 
-    pickle.dump(predicate_label, open(os.path.join(FLAGS.model_path, 'classes_to_labels.pkl'), "wb"), protocol=2)
-
     # 词向量对应的词列表，及对应词向量
     words, vectors = load_word_vectors(file_path=FLAGS.emb_file)
     embedding_index = {w: vec for w, vec in zip(words, vectors)}
@@ -86,12 +76,22 @@ def train():
     print('Found %s word vectors.' % len(embedding_index))
 
     train_data = read_data(FLAGS.train_file)
-    test_data = read_data(FLAGS.dev_file)
+    test_data = read_data(FLAGS.dev_file) # [['怎么解释ALTHAUN', '定义']]
 
     # "id","comment_text","toxic","severe_toxic","obscene","threat","insult","identity_hate"
     raw_train_comments = [t[0] for t in train_data]
     raw_test_comments = [t[0] for t in test_data]
-    # classes_to_predict = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
+    classes_to_predict = list(set(t[1] for t in train_data) | set(t[1] for t in test_data))
+    predicate_index = {predicate: _index for _index, predicate in enumerate(classes_to_predict)}
+
+    predicate_categ = to_categorical(list(predicate_index.values()))
+
+    predicate_label = {predicate: predicate_categ[_index] for predicate, _index in predicate_index.items()}
+
+    pickle.dump(predicate_label, open(os.path.join(FLAGS.model_path, 'classes_to_labels.pkl'), "wb"), protocol=2)
+
+    print(predicate_label)
+
     y = np.array([predicate_label[t[1]] for t in train_data])
     test_y = np.array([predicate_label[t[1]] for t in test_data])
 
@@ -168,14 +168,15 @@ def train():
 
     pickle.dump(embedding_matrix, open(os.path.join(FLAGS.model_path, 'embedding_matrix.pkl'), "wb"), protocol=2)
 
-    model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict)
+    model = make_model(nb_words, EMBEDDING_DIM, embedding_matrix, len(classes_to_predict))
     print(model.summary())
 
     # stamp = 'sentiment_with_lstm_and_glove_%.2f_%.2f'%(lstm_dropout_rate,dense_dropout_rate)
     # print(stamp)
     # best_model_path = stamp + '.h5'
 
-    best_model_path = os.path.join(FLAGS.model_path, 'checkpoint-{epoch:02d}-{val_loss:.2f}-{val_acc:.3f}.hdf5')
+    # best_model_path = os.path.join(FLAGS.model_path, 'checkpoint-{epoch:02d}-{val_loss:.2f}-{val_acc:.3f}.hdf5')
+    best_model_path = os.path.join(FLAGS.model_path, CHECKPOINT_FILE)
 
     early_stopping = EarlyStopping(patience = 2)
     model_checkpoint = ModelCheckpoint(best_model_path, save_best_only = True, save_weights_only = False)

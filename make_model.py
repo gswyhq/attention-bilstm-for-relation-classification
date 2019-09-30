@@ -81,7 +81,7 @@ class Attention(Layer):
     def compute_output_shape(self, input_shape):
         return input_shape[0],  self.features_dim
 
-def make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict):
+def make_model(nb_words, EMBEDDING_DIM, embedding_matrix, class_num):
 
     embedding_layer = Embedding(nb_words, EMBEDDING_DIM, weights=[embedding_matrix], input_length=MAX_SEQUENCE_LENGTH,
                                 trainable=False)
@@ -95,7 +95,7 @@ def make_model(nb_words, EMBEDDING_DIM, embedding_matrix, classes_to_predict):
     merged = Dense(num_dense, activation='relu')(merged)
     merged = Dropout(dense_dropout_rate)(merged)
     merged = BatchNormalization()(merged)
-    preds = Dense(len(classes_to_predict), activation='softmax')(merged) # sigmoid
+    preds = Dense(class_num, activation='softmax')(merged) # sigmoid
 
     model = Model(inputs=[input_comment], outputs=preds)
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']) # binary_crossentropy

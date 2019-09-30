@@ -1,0 +1,6 @@
+# pipreqs /home/gswyhq/rel_class
+# sudo pip3 install -r requirements.txt -i http://pypi.douban.com/simple --trusted-host=pypi.douban.com
+
+tornado==6.0.1
+Keras==2.2.4
+tensorflow==1.13.1

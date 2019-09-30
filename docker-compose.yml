@@ -1,0 +1,34 @@
+version: '2'
+services:
+  rel-class:
+    image: gswyhq/rel-class:bilstm_20190918_2043
+#    build: .
+    tty: true
+    working_dir: "/rel_class"
+    restart: always
+    ports:
+      - "18002:8000"
+    environment:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      TZ: CST-8
+
+#    volumes:
+#      - .log:/rel-class/log
+
+    networks:
+      - mynet
+    command: /rel_class/docker-entrypoint.sh
+
+networks:
+  mynet:
+    driver: bridge
+
+
+# ubuntu@ip-172-33-3-123:~/nlp/_kf_3$ docker-compose -f docker-compose--kf-20180830.yml --project-directory /rel-class up -d
+# 查看容器
+# gswyhq@gswyhq-PC:~/gswyhq/wiki$ docker-compose -f docker-compose--p1-20180815.yml ps
+# 停止容器
+# gswyhq@gswyhq-PC:~/gswyhq/wiki$ docker-compose -f docker-compose--p1-20180815.yml stop
+# 删除容器
+# gswyhq@gswyhq-PC:~/gswyhq/wiki$ docker-compose -f docker-compose--p1-20180815.yml rm -v
