@@ -11,9 +11,13 @@ TRAIN_DATA_FILE = '/home/gswyhq/github_projects/lic2019-information-extraction-b
 DEV_DATA_FILE = '/home/gswyhq/github_projects/lic2019-information-extraction-baseline/data/dev_data.json'
 TEST_DATA_FILE = '/home/gswyhq/github_projects/lic2019-information-extraction-baseline/data/test_demo.json'
 
-SAVE_TRAIN_DATA_FILE = './data/train.txt'
-SAVE_TEST_DATA_FILE = './data/test.txt'
-SAVE_DEV_DATA_FILE = './data/dev.txt'
+# SAVE_TRAIN_DATA_FILE = './data/train.txt'
+# SAVE_TEST_DATA_FILE = './data/test.txt'
+# SAVE_DEV_DATA_FILE = './data/dev.txt'
+
+SAVE_TRAIN_DATA_FILE = './data/ner_rel_train2.txt'
+SAVE_TEST_DATA_FILE = './data/ner_rel_test2.txt'
+SAVE_DEV_DATA_FILE = './data/ner_rel_dev2.txt'
 
 def get_pinyin(text, upper=False):
     """
@@ -28,6 +32,10 @@ def get_pinyin(text, upper=False):
         else:
             return ''.join(lazy_pinyin(text)).capitalize()
     return ''
+
+
+NOT_ZH_EN_WORDS_PATTERN = '[^\u0800-\u9fa5A-Za-z]' # 非中英日文字符
+NOT_ZH_EN_WORDS_PATTERN_COMPILE = re.compile(NOT_ZH_EN_WORDS_PATTERN)
 
 # BIOES   (B-begin，I-inside，O-outside，E-end，S-single)
 #
@@ -85,6 +93,63 @@ predicate_dict = {'祖籍': ['是什么', '在哪里'],
  '改编自': ['是什么'],
  '创始人': ['是什么', '是谁']}
 
+GERNERATOR_NER_REL_DATA = True
+
+if GERNERATOR_NER_REL_DATA:
+    with open('/home/gswyhq/kg_fusion/data/tongyong_entity_dict.json')as f:
+        tongyong_entity_dict = json.load(f)
+    with open('/home/gswyhq/data/stopwords.txt')as f:
+        stopwords = f.readlines()
+        stopwords = [t.strip() for t in stopwords]
+        stopwords.remove('$')
+else:
+    tongyong_entity_dict = {}
+    stopwords = []
+
+def write_rel(f2, rel, entity_dict, question):
+    # insert_index = random.randint(0, len(question))
+    # random_word = random.choice(stopwords)
+    word_flag = []
+    if entity_dict and any(key in question for key in entity_dict.keys()):
+        index_list = [[i.start(), i.end()] for i in re.finditer('|'.join(list(entity_dict.keys())), question)]
+
+        for _index, char in enumerate(question):
+            if any(start_index < _index < end_index for start_index, end_index in index_list):
+                continue
+
+            word = ''
+            for start_index, end_index in index_list:
+                if _index == start_index:
+                    word = question[start_index: end_index]
+                    break
+                elif _index < start_index:
+                    break
+                else:
+                    continue
+
+            # if insert_index == _index:
+            #     [word_flag.append([char, 'O']) for char in random_word]
+
+            if word:
+                word = word.upper()
+                word_len = len(word)
+                word_pinyin = entity_dict.get(word, 'Shiyi').capitalize()
+                if word_len == 1:
+                    word_flag.append([word, 'B-{}'.format(word_pinyin)])
+                elif word_len >= 2:
+                    word_flag.append([word[0], 'B-{}'.format(word_pinyin)])
+                    for w in word[1:]:
+                        word_flag.append([w, 'I-{}'.format(word_pinyin)])
+                else:
+                    continue
+            else:
+                word_flag.append([char, 'O'])
+    else:
+        [word_flag.append([char, 'O']) for char in question]
+
+    if word_flag:
+        f2.write('{}\t{}\n'.format(' '.join('/'.join(w) for w in word_flag), rel))
+            
 def format_tran(input_file, output_file, format='IOB'):
     with open(input_file) as f:
         line = f.readline()
@@ -105,19 +170,47 @@ def format_tran(input_file, output_file, format='IOB'):
                     subject_type = spo["subject_type"]
                     object = spo["object"]
                     subject = spo["subject"]
-                    entity_dict.setdefault(subject.upper(), get_pinyin(subject_type, upper=True))
-                    entity_dict.setdefault(object.upper(), get_pinyin(object_type, upper=True))
 
-                    if len(text) <= 60:
-                        f2.write("{}\t{}\n".format(text, predicate))
+                    subject = re.sub(NOT_ZH_EN_WORDS_PATTERN_COMPILE, '', subject)
+                    object = re.sub(NOT_ZH_EN_WORDS_PATTERN_COMPILE, '', object)
+                    if len(subject) > 1:
+                        entity_dict.setdefault(subject.upper(), get_pinyin(subject_type, upper=True))
+                    if len(object) > 1:
+                        entity_dict.setdefault(object.upper(), get_pinyin(object_type, upper=True))
 
-                    split_text = re.split('[,，。？；！]', text)
-                    for sub_text in split_text:
-                        if subject in sub_text and object in sub_text:
-                            sub_text = sub_text.replace(object, random.choice(predicate_dict.get(predicate)))
-                            f2.write("{}\t{}\n".format(sub_text, predicate))
-                    
-                    f2.write("{}的{}{}\t{}\n".format(subject, predicate, random.choice(predicate_dict.get(predicate)), predicate))
+                for spo in spo_list:
+                    predicate = spo["predicate"]
+                    object_type = spo["object_type"]
+                    subject_type = spo["subject_type"]
+                    object = spo["object"]
+                    subject = spo["subject"]
+                    if GERNERATOR_NER_REL_DATA:
+                        
+                        if len(text) <= 60:
+                            # f2.write("{}\t{}\n".format(text, predicate))
+                            write_rel(f2, predicate, entity_dict, text)
+    
+                        split_text = re.split('[,，。？；！]', text)
+                        for sub_text in split_text:
+                            if subject in sub_text and object in sub_text:
+                                sub_text = sub_text.replace(object, random.choice(predicate_dict.get(predicate)))
+                                write_rel(f2, predicate, entity_dict, sub_text)
+                        
+                        sub_text = "{}的{}{}".format(subject, predicate, random.choice(predicate_dict.get(predicate)))
+                        write_rel(f2, predicate, entity_dict, sub_text)
+                    else:
+                        if len(text) <= 60:
+                            f2.write("{}\t{}\n".format(text, predicate))
+
+                        split_text = re.split('[,，。？；！]', text)
+                        for sub_text in split_text:
+                            if subject in sub_text and object in sub_text:
+                                sub_text = sub_text.replace(object, random.choice(predicate_dict.get(predicate)))
+                                f2.write("{}\t{}\n".format(sub_text, predicate))
+
+                        f2.write(
+                            "{}的{}{}\t{}\n".format(subject, predicate, random.choice(predicate_dict.get(predicate)),
+                                                   predicate))
 
                 # for word_pos in postag:
                 #     word = word_pos.get('word').upper()
@@ -132,6 +225,7 @@ def format_tran(input_file, output_file, format='IOB'):
 
 def main():
     for input_file, output_file in zip([TRAIN_DATA_FILE, DEV_DATA_FILE, TEST_DATA_FILE], [SAVE_TRAIN_DATA_FILE, SAVE_DEV_DATA_FILE, SAVE_TEST_DATA_FILE]):
+    # for input_file, output_file in zip([ DEV_DATA_FILE], [ SAVE_DEV_DATA_FILE]):
         format_tran(input_file, output_file)
 
 
